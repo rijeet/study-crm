@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
@@ -11,18 +11,43 @@ export default function RegisterLeadPage() {
 	const [status, setStatus] = useState<"idle"|"ok"|"error">("idle");
 	const [error, setError] = useState<string | null>(null);
 
+	// Ensure CSRF token cookie is set by making a request to a safe endpoint
+	useEffect(() => {
+		if (typeof window !== "undefined") {
+			// Fetch countries endpoint to trigger middleware to set CSRF cookie if needed
+			fetch("/api/v1/locations/countries").catch(() => {});
+		}
+	}, []);
+
 	const submit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setStatus("idle"); setError(null);
 		try {
-			const res = await fetch("/api/v1/leads/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-				name: form.name,
-				email: form.email || undefined,
-				phone: form.phone || undefined,
-				destinationCountryId: form.destinationCountryId || undefined,
-				programId: form.programId || undefined,
-				intake: form.intake || undefined,
-			}) });
+			// Get CSRF token from cookie
+			const getCsrfToken = () => {
+				if (typeof document === "undefined") return null;
+				const match = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
+				return match ? decodeURIComponent(match[1]) : null;
+			};
+
+			const csrfToken = getCsrfToken();
+			const headers: Record<string, string> = { "Content-Type": "application/json" };
+			if (csrfToken) {
+				headers["x-csrf-token"] = csrfToken;
+			}
+
+			const res = await fetch("/api/v1/leads/register", {
+				method: "POST",
+				headers,
+				body: JSON.stringify({
+					name: form.name,
+					email: form.email || undefined,
+					phone: form.phone || undefined,
+					destinationCountryId: form.destinationCountryId || undefined,
+					programId: form.programId || undefined,
+					intake: form.intake || undefined,
+				})
+			});
 			if (!res.ok) {
 				const txt = await res.text();
 				throw new Error(txt || "Failed to register");

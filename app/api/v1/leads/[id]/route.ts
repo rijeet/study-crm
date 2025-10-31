@@ -13,14 +13,21 @@ const updateSchema = z.object({
 	status: z.string().optional(),
 	note: z.string().optional(),
 	reference: z.string().optional(),
-	destinationCountryId: z.string().optional(),
-	programId: z.string().optional(),
-	intake: z.string().optional(),
-	langTestId: z.string().optional(),
-	financialSituation: z.string().optional(),
-	situation: z.string().optional(),
-	appointmentAt: z.string().optional(),
-	remarks: z.string().optional(),
+	destinationCountryId: z.string().nullable().optional(),
+	stateId: z.string().nullable().optional(),
+	cityId: z.string().nullable().optional(),
+	programId: z.string().nullable().optional(),
+	intake: z.string().nullable().optional(),
+	langTestId: z.string().nullable().optional(),
+	financialSituation: z.string().nullable().optional(),
+	situation: z.string().nullable().optional(),
+	appointmentAt: z.string().nullable().optional(),
+	remarks: z.string().nullable().optional(),
+	academicDetails: z.any().optional(),
+	juniorConsultantId: z.string().nullable().optional(),
+	juniorReceivedAt: z.string().nullable().optional(),
+	seniorConsultantId: z.string().nullable().optional(),
+	seniorReceivedAt: z.string().nullable().optional(),
 });
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -89,12 +96,27 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 		if (allowed[k]) $set[k] = v;
 	}
 	if ($set.status) {
-		await Lead.updateOne({ _id: id }, { $push: { statusHistory: { status: $set.status, at: new Date() } } });
+		await Lead.updateOne({ _id: id }, { $push: { statusHistory: { status: $set.status, at: new Date(), by: auth.userId as any } } });
 		delete $set.status;
 	}
-	if ($set.appointmentAt) {
-		$set.appointmentAt = new Date($set.appointmentAt);
+	if ($set.appointmentAt !== undefined) {
+		$set.appointmentAt = $set.appointmentAt ? new Date($set.appointmentAt as string) : null;
 	}
+	if ($set.juniorReceivedAt !== undefined) {
+		$set.juniorReceivedAt = $set.juniorReceivedAt ? new Date($set.juniorReceivedAt as string) : null;
+	}
+	if ($set.seniorReceivedAt !== undefined) {
+		$set.seniorReceivedAt = $set.seniorReceivedAt ? new Date($set.seniorReceivedAt as string) : null;
+	}
+	// Handle null values for optional fields
+	const nullifyIfEmpty = (fields: string[]) => {
+		fields.forEach(f => {
+			if ($set[f] === "" || $set[f] === undefined) {
+				$set[f] = null;
+			}
+		});
+	};
+	nullifyIfEmpty(["destinationCountryId", "stateId", "cityId", "programId", "intake", "langTestId", "financialSituation", "situation", "juniorConsultantId", "seniorConsultantId"]);
 	const updated = await Lead.findByIdAndUpdate(id, { $set }, { new: true });
 	return NextResponse.json({ item: updated });
 }

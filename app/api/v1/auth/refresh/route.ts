@@ -5,6 +5,7 @@ import { RefreshToken } from "@/models/RefreshToken";
 import { User } from "@/models/User";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "@/lib/auth/jwt";
 import { authLimiter } from "@/lib/rateLimit";
+import { resolveUserPermissions } from "@/lib/auth/resolve-permissions";
 
 export async function POST(req: NextRequest) {
 	try { await authLimiter("auth:refresh", 20); } catch { return NextResponse.json({ error: "Too many requests" }, { status: 429 }); }
@@ -39,7 +40,10 @@ export async function POST(req: NextRequest) {
 	const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);
 	await RefreshToken.create({ userId: user._id, tokenHash: newHash, expiresAt, invalidated: false });
 
-	const accessToken = signAccessToken({ sub: String(user._id), role: user.role, permissions: user.permissions });
+	// Resolve effective permissions: role permissions + user permissions
+	const effectivePermissions = await resolveUserPermissions(user._id);
+
+	const accessToken = signAccessToken({ sub: String(user._id), role: user.role, permissions: effectivePermissions });
 	const res = NextResponse.json({ accessToken });
 	res.cookies.set("refresh_token", newRefreshToken, {
 		httpOnly: true,

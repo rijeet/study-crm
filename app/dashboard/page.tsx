@@ -1,6 +1,7 @@
 "use client";
 import useSWR from "swr";
 import { api } from "@/lib/client/api";
+import { useState } from "react";
 import ProtectedRoute from "@/app/components/ProtectedRoute";
 
 const fetcher = (url: string) => api.get(url).then(r => r.data);
@@ -55,12 +56,14 @@ function TwoRowCard({ title, subtitle, value, pendingLabel = "Pending", pendingC
 
 function LineChart({ months, leads, applications, enrollments }: { months: string[]; leads: number[]; applications: number[]; enrollments: number[] }) {
 	const width = 900; const height = 300; const padding = 32;
+	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 	const maxVal = Math.max(1, ...leads, ...applications, ...enrollments);
 	const x = (i: number) => padding + (i * (width - 2*padding)) / Math.max(1, months.length - 1);
 	const y = (v: number) => height - padding - (v * (height - 2*padding)) / maxVal;
 	const path = (arr: number[]) => arr.map((v, i) => `${i===0?"M":"L"}${x(i)},${y(v)}`).join(" ");
+
 	return (
-		<div className="overflow-x-auto bg-white rounded-xl border border-gray-200 p-6">
+		<div className="overflow-x-auto bg-white rounded-xl border border-gray-200 p-6 relative">
 			<div className="flex items-center justify-between mb-4">
 				<h3 className="text-lg font-semibold text-gray-900">Trend Analysis</h3>
 				<div className="flex items-center gap-6 text-xs">
@@ -69,32 +72,107 @@ function LineChart({ months, leads, applications, enrollments }: { months: strin
 					<div className="flex items-center gap-2"><span className="inline-block w-4 h-1 bg-gradient-to-r from-indigo-400 to-indigo-500 rounded" /> Leads</div>
 				</div>
 			</div>
-			<svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-full">
-				{Array.from({ length: 5 }).map((_, i) => {
-					const yy = padding + i * (height - 2*padding) / 4;
-					return <line key={i} x1={padding} x2={width - padding} y1={yy} y2={yy} stroke="#e5e7eb" strokeDasharray="4 4" strokeWidth={1} />
-				})}
-				<path d={path(leads)} fill="none" stroke="url(#gradientLeads)" strokeWidth={3} strokeLinecap="round" />
-				<path d={path(applications)} fill="none" stroke="url(#gradientApps)" strokeWidth={2.5} strokeDasharray="4 2" strokeLinecap="round" />
-				<path d={path(enrollments)} fill="none" stroke="url(#gradientEnroll)" strokeWidth={2.5} strokeDasharray="2 2" strokeLinecap="round" />
-				<defs>
-					<linearGradient id="gradientLeads" x1="0%" y1="0%" x2="100%" y2="0%">
-						<stop offset="0%" stopColor="#6366f1" />
-						<stop offset="100%" stopColor="#8b5cf6" />
-					</linearGradient>
-					<linearGradient id="gradientApps" x1="0%" y1="0%" x2="100%" y2="0%">
-						<stop offset="0%" stopColor="#f59e0b" />
-						<stop offset="100%" stopColor="#f97316" />
-					</linearGradient>
-					<linearGradient id="gradientEnroll" x1="0%" y1="0%" x2="100%" y2="0%">
-						<stop offset="0%" stopColor="#10b981" />
-						<stop offset="100%" stopColor="#34d399" />
-					</linearGradient>
-				</defs>
-				{months.map((m, i) => (
-					<text key={m+String(i)} x={x(i)} y={height - padding + 16} textAnchor="middle" fontSize="11" fill="#6b7280" fontWeight="500">{m}</text>
-				))}
-			</svg>
+			<div className="relative">
+				<svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-full" onMouseLeave={() => setHoveredIndex(null)}>
+					{/* Grid lines */}
+					{Array.from({ length: 5 }).map((_, i) => {
+						const yy = padding + i * (height - 2*padding) / 4;
+						return <line key={i} x1={padding} x2={width - padding} y1={yy} y2={yy} stroke="#e5e7eb" strokeDasharray="4 4" strokeWidth={1} />
+					})}
+					
+					{/* Gradient definitions */}
+					<defs>
+						<linearGradient id="gradientLeads" x1="0%" y1="0%" x2="100%" y2="0%">
+							<stop offset="0%" stopColor="#6366f1" />
+							<stop offset="100%" stopColor="#8b5cf6" />
+						</linearGradient>
+						<linearGradient id="gradientApps" x1="0%" y1="0%" x2="100%" y2="0%">
+							<stop offset="0%" stopColor="#f59e0b" />
+							<stop offset="100%" stopColor="#f97316" />
+						</linearGradient>
+						<linearGradient id="gradientEnroll" x1="0%" y1="0%" x2="100%" y2="0%">
+							<stop offset="0%" stopColor="#10b981" />
+							<stop offset="100%" stopColor="#34d399" />
+						</linearGradient>
+					</defs>
+
+					{/* Chart lines */}
+					<path d={path(leads)} fill="none" stroke="url(#gradientLeads)" strokeWidth={3} strokeLinecap="round" />
+					<path d={path(applications)} fill="none" stroke="url(#gradientApps)" strokeWidth={2.5} strokeDasharray="4 2" strokeLinecap="round" />
+					<path d={path(enrollments)} fill="none" stroke="url(#gradientEnroll)" strokeWidth={2.5} strokeDasharray="2 2" strokeLinecap="round" />
+					
+					{/* Data points with hover areas - vertical line for easier hovering */}
+					{months.map((m, i) => {
+						const maxY = Math.max(y(leads[i] || 0), y(applications[i] || 0), y(enrollments[i] || 0));
+						const minY = Math.min(y(leads[i] || 0), y(applications[i] || 0), y(enrollments[i] || 0));
+						return (
+							<g key={`points-${i}`}>
+								{/* Invisible vertical hover area - makes it easy to hover anywhere near the data points */}
+								<rect
+									x={x(i) - 15}
+									y={Math.min(minY - 10, height - padding)}
+									width="30"
+									height={Math.max(maxY - minY + 20, 50)}
+									fill="transparent"
+									stroke="none"
+									onMouseEnter={() => setHoveredIndex(i)}
+									style={{ cursor: 'pointer' }}
+								/>
+								{/* Visible dots on hover */}
+								{hoveredIndex === i && (
+									<>
+										{leads[i] > 0 && <circle cx={x(i)} cy={y(leads[i])} r="5" fill="#6366f1" stroke="white" strokeWidth={2} />}
+										{applications[i] > 0 && <circle cx={x(i)} cy={y(applications[i])} r="5" fill="#f59e0b" stroke="white" strokeWidth={2} />}
+										{enrollments[i] > 0 && <circle cx={x(i)} cy={y(enrollments[i])} r="5" fill="#10b981" stroke="white" strokeWidth={2} />}
+									</>
+								)}
+							</g>
+						);
+					})}
+
+					{/* Month labels */}
+					{months.map((m, i) => (
+						<text key={m+String(i)} x={x(i)} y={height - padding + 16} textAnchor="middle" fontSize="11" fill="#6b7280" fontWeight="500">{m}</text>
+					))}
+				</svg>
+
+				{/* Tooltip */}
+				{hoveredIndex !== null && (
+					<div
+						className="absolute bg-gray-900 text-white rounded-lg shadow-xl p-3 pointer-events-none z-10 min-w-[180px]"
+						style={{
+							left: `calc(${(x(hoveredIndex) / width) * 100}% - 90px)`,
+							top: '20px',
+							transform: 'translateX(0)'
+						}}
+					>
+						<div className="text-xs font-semibold mb-2 border-b border-gray-700 pb-2">{months[hoveredIndex]}</div>
+						<div className="space-y-1.5 text-xs">
+							<div className="flex items-center justify-between gap-3">
+								<div className="flex items-center gap-2">
+									<div className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-400 to-indigo-500"></div>
+									<span className="text-gray-300">Leads</span>
+								</div>
+								<span className="font-bold text-white">{leads[hoveredIndex]?.toLocaleString() || 0}</span>
+							</div>
+							<div className="flex items-center justify-between gap-3">
+								<div className="flex items-center gap-2">
+									<div className="w-2 h-2 rounded-full bg-gradient-to-r from-amber-400 to-amber-500"></div>
+									<span className="text-gray-300">Applications</span>
+								</div>
+								<span className="font-bold text-white">{applications[hoveredIndex]?.toLocaleString() || 0}</span>
+							</div>
+							<div className="flex items-center justify-between gap-3">
+								<div className="flex items-center gap-2">
+									<div className="w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500"></div>
+									<span className="text-gray-300">Enrollments</span>
+								</div>
+								<span className="font-bold text-white">{enrollments[hoveredIndex]?.toLocaleString() || 0}</span>
+							</div>
+						</div>
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }

@@ -7,7 +7,7 @@ import { requirePermission } from "@/lib/auth/require";
 const createSchema = z.object({ countryId: z.string(), stateId: z.string(), name: z.string().min(2), zip: z.string().optional(), status: z.string().optional() });
 
 export async function GET(req: NextRequest) {
-	const gate = requirePermission(req, ["locations:manage"]);
+	const gate = requirePermission(req, ["locations:view", "locations:manage"]);
 	if (gate) return gate;
 	await connectToDatabase();
 	const list = await City.find({}).sort({ name: 1 });

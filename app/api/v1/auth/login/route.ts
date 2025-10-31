@@ -7,6 +7,7 @@ import { User } from "@/models/User";
 import { RefreshToken } from "@/models/RefreshToken";
 import { signAccessToken, signRefreshToken } from "@/lib/auth/jwt";
 import { authLimiter } from "@/lib/rateLimit";
+import { resolveUserPermissions } from "@/lib/auth/resolve-permissions";
 
 const loginSchema = z.object({
 	email: z.string().email(),
@@ -28,7 +29,10 @@ export async function POST(req: Request) {
 	const ok = await bcrypt.compare(password, user.passwordHash);
 	if (!ok) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
 
-	const accessToken = signAccessToken({ sub: String(user._id), role: user.role, permissions: user.permissions });
+	// Resolve effective permissions: role permissions + user permissions
+	const effectivePermissions = await resolveUserPermissions(user._id);
+
+	const accessToken = signAccessToken({ sub: String(user._id), role: user.role, permissions: effectivePermissions });
 	const jti = crypto.randomUUID();
 	const refreshToken = signRefreshToken({ sub: String(user._id), jti });
 	const tokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");

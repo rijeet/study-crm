@@ -6,7 +6,7 @@ import ProtectedRoute from "@/app/components/ProtectedRoute";
 
 const fetcher = (url: string) => api.get(url).then(r => r.data);
 
-export default function BranchesPage() {
+function BranchesPage() {
 	const { data: countries } = useSWR("/api/v1/locations/countries", fetcher);
 	const { data: states } = useSWR("/api/v1/locations/states", fetcher);
 	const { data, mutate } = useSWR("/api/v1/branches", fetcher);
@@ -91,3 +91,5 @@ export default function BranchesPage() {
 		</ProtectedRoute>
 	);
 }
+
+export default BranchesPage;

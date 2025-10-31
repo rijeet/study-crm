@@ -7,7 +7,7 @@ import { requirePermission } from "@/lib/auth/require";
 const createSchema = z.object({ name: z.string().min(1), shortName: z.string().min(1), status: z.string().optional() });
 
 export async function GET(req: NextRequest) {
-	const gate = requirePermission(req, ["languagetests:manage"]);
+	const gate = requirePermission(req, ["languagetests:view", "languagetests:manage"]);
 	if (gate) return gate;
 	await connectToDatabase();
 	const list = await LanguageTest.find({}).sort({ shortName: 1 });

@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+:root {
+	--color-primary: 38 90% 50%;
+}
+
+* {
+	outline-color: hsl(var(--color-primary));
+}
+
+

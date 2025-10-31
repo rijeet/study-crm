@@ -7,8 +7,7 @@ import { requirePermission } from "@/lib/auth/require";
 const createSchema = z.object({ name: z.string().min(2), code: z.string().min(2).max(3), phoneCode: z.string().min(1), status: z.string().optional() });
 
 export async function GET(req: NextRequest) {
-	const gate = requirePermission(req, ["locations:manage"]);
-	if (gate) return gate;
+	// Public read access for registration page
 	await connectToDatabase();
 	const { searchParams } = new URL(req.url);
 	const page = Math.max(1, Number(searchParams.get("page") || 1));

@@ -2,6 +2,7 @@
 import useSWR from "swr";
 import { api } from "@/lib/client/api";
 import { useState } from "react";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 
 const fetcher = (url: string) => api.get(url).then(r => r.data);
 
@@ -15,34 +16,51 @@ export default function UniversitiesPage() {
 		mutate();
 	};
 	return (
-		<main className="p-6 space-y-6">
-			<h1 className="text-xl font-semibold">Universities</h1>
-			<div className="flex flex-wrap gap-2 items-center">
-				<select className="border rounded px-2 py-1" value={form.countryId} onChange={(e)=>setForm({...form,countryId:e.target.value})}>
-					<option value="">Select country</option>
-					{countries?.items?.map((c:any)=>(<option key={c._id} value={c._id}>{c.name}</option>))}
-				</select>
-				<input className="border rounded px-2 py-1" placeholder="University name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} />
-				<button className="bg-black text-white px-3 py-1 rounded" onClick={onCreate} disabled={!form.countryId || !form.name}>Add</button>
-			</div>
-			<table className="w-full text-sm border">
-				<thead className="bg-gray-50">
-					<tr>
-						<th className="p-2 text-left">Country</th>
-						<th className="p-2 text-left">University</th>
-					</tr>
-				</thead>
-				<tbody>
-					{data?.items?.map((u:any)=>(
-						<tr key={u._id} className="border-t">
-							<td className="p-2">{countries?.items?.find((x:any)=>x._id===u.countryId)?.name || u.countryId}</td>
-							<td className="p-2">{u.name}</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
-		</main>
+		<ProtectedRoute>
+			<main className="p-8 space-y-6">
+				<div className="flex items-center justify-between">
+					<div>
+						<h1 className="text-3xl font-bold text-gray-900">Universities</h1>
+						<p className="text-gray-500 mt-1">Manage university information</p>
+					</div>
+				</div>
+				<div className="card p-6">
+					<h2 className="text-lg font-semibold text-gray-900 mb-4">Add New University</h2>
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+						<select value={form.countryId} onChange={(e)=>setForm({...form,countryId:e.target.value})}>
+							<option value="">Select Country</option>
+							{countries?.items?.map((c:any)=>(<option key={c._id} value={c._id}>{c.name}</option>))}
+						</select>
+						<input placeholder="University name *" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} required />
+						<button className="btn-primary" onClick={onCreate} disabled={!form.countryId || !form.name}>Add University</button>
+					</div>
+				</div>
+				<div className="card overflow-hidden">
+					<table className="modern-table">
+						<thead>
+							<tr>
+								<th>Country</th>
+								<th>University</th>
+								<th>Status</th>
+							</tr>
+						</thead>
+						<tbody>
+							{data?.items?.map((u:any)=>(
+								<tr key={u._id}>
+									<td>{countries?.items?.find((x:any)=>x._id===u.countryId)?.name || u.countryId}</td>
+									<td className="font-medium">{u.name}</td>
+									<td><span className={u.status === "active" ? "badge badge-success" : "badge badge-gray"}>{u.status || "active"}</span></td>
+								</tr>
+							))}
+							{!data?.items?.length && (
+								<tr>
+									<td colSpan={3} className="text-center py-8 text-gray-500">No universities found</td>
+								</tr>
+							)}
+						</tbody>
+					</table>
+				</div>
+			</main>
+		</ProtectedRoute>
 	);
 }
-
-

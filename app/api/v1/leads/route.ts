@@ -4,6 +4,8 @@ import { connectToDatabase } from "@/lib/db/mongoose";
 import { Lead } from "@/models/Lead";
 import type { FilterQuery } from "mongoose";
 import { requirePermission } from "@/lib/auth/require";
+import { getAuthUser } from "@/lib/auth/context";
+import { User } from "@/models/User";
 
 const createSchema = z.object({
 	name: z.string().min(1),
@@ -27,6 +29,8 @@ function generateStudentId() {
 export async function GET(req: NextRequest) {
 	const gate = requirePermission(req, ["leads:read"]);
 	if (gate) return gate;
+	const auth = getAuthUser(req);
+	if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	await connectToDatabase();
 	const { searchParams } = new URL(req.url);
 	const page = Math.max(1, Number(searchParams.get("page") || 1));
@@ -46,7 +50,17 @@ export async function GET(req: NextRequest) {
 	if (destinationCountryId) filter.destinationCountryId = destinationCountryId;
 	if (programId) filter.programId = programId;
 
-    const total = await Lead.countDocuments(filter as any);
+	// role-based scoping
+	if (auth.role === "BranchManager") {
+		const bm = await User.findById(auth.userId).select({ branchId: 1 });
+		if (bm?.branchId) (filter as any).currentBranchId = bm.branchId;
+	} else if (auth.role === "Consultant") {
+		(filter as any).currentConsultantUserId = auth.userId;
+	} else {
+		// Admin and DatabaseManager see all
+	}
+
+	const total = await Lead.countDocuments(filter as any);
     const items = await Lead.find(filter as any)
 		.sort({ createdAt: -1 })
 		.skip((page - 1) * limit)

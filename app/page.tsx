@@ -1,10 +1,23 @@
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/providers";
+
 export default function HomePage() {
+	const router = useRouter();
+	const { accessToken } = useAuth();
+
+	useEffect(() => {
+		if (accessToken) {
+			router.replace("/dashboard");
+		} else {
+			router.replace("/login");
+		}
+	}, [accessToken, router]);
+
 	return (
-		<main className="p-6">
-			<h1 className="text-2xl font-semibold">Welcome to StudyCRM</h1>
-			<p className="mt-2 text-gray-600">Get started by <a href="/login" className="text-blue-600 underline">signing in</a>.</p>
-		</main>
+		<div className="min-h-screen flex items-center justify-center">
+			<div className="text-gray-500">Redirecting...</div>
+		</div>
 	);
 }
-
-

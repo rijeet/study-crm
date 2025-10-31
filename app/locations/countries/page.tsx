@@ -2,6 +2,7 @@
 import useSWR from "swr";
 import { api } from "@/lib/client/api";
 import { useMemo, useState } from "react";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 
 const fetcher = (url: string) => api.get(url).then(r => r.data);
 
@@ -23,61 +24,85 @@ export default function CountriesPage() {
 		setForm({ name: "", code: "", phoneCode: "" });
 		mutate();
 	};
-    const onUpdate = async (id: string, payload: any) => { await api.put(`/api/v1/locations/countries/${id}`, payload); mutate(); };
-    const onDelete = async (id: string) => { await api.delete(`/api/v1/locations/countries/${id}`); mutate(); };
+	const onUpdate = async (id: string, payload: any) => { await api.put(`/api/v1/locations/countries/${id}`, payload); mutate(); };
+	const onDelete = async (id: string) => {
+		if (!confirm("Delete this country?")) return;
+		await api.delete(`/api/v1/locations/countries/${id}`);
+		mutate();
+	};
 	return (
-		<main className="p-6 space-y-6">
-			<h1 className="text-xl font-semibold">Countries</h1>
-			<div className="flex flex-wrap gap-2 items-center">
-				<input className="border rounded px-2 py-1" placeholder="Search name/code/phone" value={filters.q} onChange={(e)=>{ setPage(1); setFilters({...filters,q:e.target.value}); }} />
-				<select className="border rounded px-2 py-1" value={filters.status} onChange={(e)=>{ setPage(1); setFilters({...filters,status:e.target.value}); }}>
-					<option value="">All status</option>
-					<option value="active">active</option>
-					<option value="inactive">inactive</option>
-				</select>
-			</div>
-			<div className="flex gap-2">
-				<input className="border rounded px-2 py-1" placeholder="Name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} />
-				<input className="border rounded px-2 py-1" placeholder="Code" value={form.code} onChange={(e)=>setForm({...form,code:e.target.value})} />
-				<input className="border rounded px-2 py-1" placeholder="Phone Code" value={form.phoneCode} onChange={(e)=>setForm({...form,phoneCode:e.target.value})} />
-				<button className="bg-black text-white px-3 py-1 rounded" onClick={onCreate}>Add</button>
-			</div>
-			<table className="w-full text-sm border">
-				<thead className="bg-gray-50">
-					<tr>
-						<th className="p-2 text-left w-14">ID</th>
-						<th className="p-2 text-left">Name</th>
-						<th className="p-2 text-left">Country Code</th>
-						<th className="p-2 text-left">Phone Code</th>
-						<th className="p-2 text-left">Status</th>
-						<th className="p-2 text-left">Action</th>
-					</tr>
-				</thead>
-				<tbody>
-					{data?.items?.map((c: any, idx: number) => (
-						<tr key={c._id} className="border-t">
-							<td className="p-2">{(data.page-1)*(data.limit)+idx+1}</td>
-							<td className="p-2"><input className="border rounded px-1 py-0.5" defaultValue={c.name} onBlur={(e)=>onUpdate(c._id,{ name: e.target.value })} /></td>
-							<td className="p-2"><input className="border rounded px-1 py-0.5 w-24" defaultValue={c.code} onBlur={(e)=>onUpdate(c._id,{ code: e.target.value })} /></td>
-							<td className="p-2"><input className="border rounded px-1 py-0.5 w-24" defaultValue={c.phoneCode} onBlur={(e)=>onUpdate(c._id,{ phoneCode: e.target.value })} /></td>
-							<td className="p-2">
-								<select className="border rounded px-1 py-0.5" defaultValue={c.status} onChange={(e)=>onUpdate(c._id,{ status: e.target.value })}>
-									<option value="active">active</option>
-									<option value="inactive">inactive</option>
-								</select>
-							</td>
-							<td className="p-2"><button className="text-red-600" onClick={()=>onDelete(c._id)}>Delete</button></td>
-						</tr>
-					))}
-				</tbody>
-			</table>
-			<div className="flex items-center gap-2 mt-4">
-				<button className="px-3 py-1 border rounded" disabled={page<=1} onClick={()=>setPage((p)=>Math.max(1,p-1))}>Prev</button>
-				<div className="text-sm">Page {data?.page || page} / {data ? Math.max(1, Math.ceil((data.total||0)/(data.limit||10))) : "-"}</div>
-				<button className="px-3 py-1 border rounded" disabled={data && (data.page*data.limit)>=data.total} onClick={()=>setPage((p)=>p+1)}>Next</button>
-			</div>
-		</main>
+		<ProtectedRoute>
+			<main className="p-8 space-y-6">
+				<div className="flex items-center justify-between">
+					<div>
+						<h1 className="text-3xl font-bold text-gray-900">Countries</h1>
+						<p className="text-gray-500 mt-1">Manage country information</p>
+					</div>
+				</div>
+				<div className="card p-4">
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+						<input placeholder="Search name/code/phone..." value={filters.q} onChange={(e)=>{ setPage(1); setFilters({...filters,q:e.target.value}); }} />
+						<select value={filters.status} onChange={(e)=>{ setPage(1); setFilters({...filters,status:e.target.value}); }}>
+							<option value="">All Status</option>
+							<option value="active">Active</option>
+							<option value="inactive">Inactive</option>
+						</select>
+					</div>
+				</div>
+				<div className="card p-6">
+					<h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Country</h2>
+					<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+						<input placeholder="Country Name *" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} required />
+						<input placeholder="Code (e.g., US) *" value={form.code} onChange={(e)=>setForm({...form,code:e.target.value.toUpperCase()})} required maxLength={3} />
+						<input placeholder="Phone Code (e.g., +1) *" value={form.phoneCode} onChange={(e)=>setForm({...form,phoneCode:e.target.value})} required />
+						<button className="btn-primary" onClick={onCreate} disabled={!form.name || !form.code || !form.phoneCode}>Add Country</button>
+					</div>
+				</div>
+				<div className="card overflow-hidden">
+					<table className="modern-table">
+						<thead>
+							<tr>
+								<th className="w-16">ID</th>
+								<th>Name</th>
+								<th>Country Code</th>
+								<th>Phone Code</th>
+								<th>Status</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{data?.items?.map((c: any, idx: number) => (
+								<tr key={c._id}>
+									<td className="font-medium text-gray-500">{(data.page-1)*(data.limit)+idx+1}</td>
+									<td><input className="border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 text-sm w-full" defaultValue={c.name} onBlur={(e)=>onUpdate(c._id,{ name: e.target.value })} /></td>
+									<td><input className="border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 text-xs font-mono w-24" defaultValue={c.code} onBlur={(e)=>onUpdate(c._id,{ code: e.target.value.toUpperCase() })} /></td>
+									<td><input className="border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 text-xs w-24" defaultValue={c.phoneCode} onBlur={(e)=>onUpdate(c._id,{ phoneCode: e.target.value })} /></td>
+									<td>
+										<select className="border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 text-sm" defaultValue={c.status} onChange={(e)=>onUpdate(c._id,{ status: e.target.value })}>
+											<option value="active">Active</option>
+											<option value="inactive">Inactive</option>
+										</select>
+									</td>
+									<td><button className="btn-danger text-xs px-3 py-1" onClick={()=>onDelete(c._id)}>Delete</button></td>
+								</tr>
+							))}
+							{!data?.items?.length && (
+								<tr>
+									<td colSpan={6} className="text-center py-8 text-gray-500">No countries found</td>
+								</tr>
+							)}
+						</tbody>
+					</table>
+				</div>
+				<div className="flex items-center justify-between">
+					<div className="text-sm text-gray-600">Showing {((data?.page || 1) - 1) * (data?.limit || 10) + 1} to {Math.min((data?.page || 1) * (data?.limit || 10), data?.total || 0)} of {data?.total || 0}</div>
+					<div className="flex items-center gap-2">
+						<button className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" disabled={page<=1} onClick={()=>setPage((p)=>Math.max(1,p-1))}>Previous</button>
+						<span className="text-sm text-gray-700 px-3">Page {data?.page || page} of {data ? Math.max(1, Math.ceil((data.total||0)/(data.limit||10))) : 1}</span>
+						<button className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" disabled={data && (data.page*data.limit)>=data.total} onClick={()=>setPage((p)=>p+1)}>Next</button>
+					</div>
+				</div>
+			</main>
+		</ProtectedRoute>
 	);
 }
-
-

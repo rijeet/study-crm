@@ -3,6 +3,8 @@ import { z } from "zod";
 import { connectToDatabase } from "@/lib/db/mongoose";
 import { Lead } from "@/models/Lead";
 import { requirePermission } from "@/lib/auth/require";
+import { getAuthUser } from "@/lib/auth/context";
+import { User } from "@/models/User";
 
 const updateSchema = z.object({
 	name: z.string().optional(),
@@ -21,28 +23,75 @@ const updateSchema = z.object({
 	remarks: z.string().optional(),
 });
 
-export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
 	const { id } = await context.params;
 	await connectToDatabase();
 	const item = await Lead.findById(id);
 	if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
-	return NextResponse.json({ item });
+	// scope check
+	const auth = getAuthUser(req);
+	if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	if (auth.role === "Admin" || auth.role === "DatabaseManager") {
+		return NextResponse.json({ item });
+	}
+	if (auth.role === "BranchManager") {
+		const bm = await User.findById(auth.userId).select({ branchId: 1 });
+		if (bm?.branchId && String(item.currentBranchId || "") === String(bm.branchId)) {
+			return NextResponse.json({ item });
+		}
+	}
+	if (auth.role === "Consultant") {
+		if (String(item.currentConsultantUserId || "") === String(auth.userId)) {
+			return NextResponse.json({ item });
+		}
+	}
+	return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 }
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
 	const gate = requirePermission(req, ["leads:update"]);
 	if (gate) return gate;
+	const auth = getAuthUser(req);
+	if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	const body = await req.json();
 	const parsed = updateSchema.safeParse(body);
 	if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
 	await connectToDatabase();
-	const $set: any = { ...parsed.data };
+	const { id } = await context.params;
+	const lead = await Lead.findById(id);
+	if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
+	// field-level masks and scoping
+	const requested = parsed.data as Record<string, unknown>;
+	const allowed: Record<string, boolean> = {};
+	const allow = (k: string) => { allowed[k] = true; };
+	if (auth.role === "Admin" || auth.role === "DatabaseManager") {
+		Object.keys(requested).forEach(allow);
+	} else if (auth.role === "BranchManager") {
+		// must be same branch
+		const bm = await User.findById(auth.userId).select({ branchId: 1 });
+		if (!bm?.branchId || String(lead.currentBranchId || "") !== String(bm.branchId)) {
+			return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+		}
+		["remarks","note"].forEach(allow);
+	} else if (auth.role === "Consultant") {
+		if (String(lead.currentConsultantUserId || "") !== String(auth.userId)) {
+			return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+		}
+		["phone","email","situation","financialSituation","academicDetails","remarks"].forEach(allow);
+	} else if (auth.role === "DataEntry") {
+		["destinationCountryId","programId","intake","name","phone","email"].forEach(allow);
+	} else {
+		return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+	}
+	// build $set from allowed fields only
+	const $set: any = {};
+	for (const [k, v] of Object.entries(requested)) {
+		if (allowed[k]) $set[k] = v;
+	}
 	if ($set.status) {
-		const { id } = await context.params;
 		await Lead.updateOne({ _id: id }, { $push: { statusHistory: { status: $set.status, at: new Date() } } });
 		delete $set.status;
 	}
-	const { id } = await context.params;
 	if ($set.appointmentAt) {
 		$set.appointmentAt = new Date($set.appointmentAt);
 	}

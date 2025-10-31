@@ -2,7 +2,11 @@ import { Schema, model, models, type Model, Types } from "mongoose";
 
 export type UserRoleName =
 	| "Admin"
+	| "DatabaseManager"
 	| "BranchManager"
+	| "Consultant"
+	| "DataEntry"
+	| "Lead"
 	| "Marketer"
 	| "JuniorConsultant"
 	| "SeniorConsultant"
@@ -26,7 +30,7 @@ export interface UserDoc {
 
 const UserSchema = new Schema<UserDoc>(
 	{
-		email: { type: String, required: true, unique: true, index: true },
+		email: { type: String, required: true, unique: true },
 		passwordHash: { type: String, required: true },
 		firstName: { type: String, required: true },
 		lastName: { type: String, required: true },
@@ -40,7 +44,6 @@ const UserSchema = new Schema<UserDoc>(
 	{ timestamps: true }
 );
 
-UserSchema.index({ email: 1 }, { unique: true });
 
 export const User: Model<UserDoc> = models.User || model<UserDoc>("User", UserSchema);
 

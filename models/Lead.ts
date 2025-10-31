@@ -24,11 +24,17 @@ export interface LeadDoc {
 	appointmentAt?: Date | null;
 	statusHistory: LeadStatusEvent[];
 	assignedToUserId?: Types.ObjectId | null;
+	// allocation pointers
+	currentBranchId?: Types.ObjectId | null;
+	currentBmUserId?: Types.ObjectId | null;
+	currentConsultantUserId?: Types.ObjectId | null;
 	juniorConsultantId?: Types.ObjectId | null;
 	juniorReceivedAt?: Date | null;
 	seniorConsultantId?: Types.ObjectId | null;
 	seniorReceivedAt?: Date | null;
 	createdBy?: Types.ObjectId | null;
+	// registration immutability
+	immutableAfterRegistration?: boolean;
 	duplicates?: Types.ObjectId[];
 	remarks?: string | null;
 }
@@ -51,17 +57,23 @@ const LeadSchema = new Schema<LeadDoc>({
 	appointmentAt: { type: Date, default: null },
 	statusHistory: [{ status: String, at: { type: Date, default: Date.now }, by: { type: Schema.Types.ObjectId, ref: "User", default: null }, note: String }],
 	assignedToUserId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+	currentBranchId: { type: Schema.Types.ObjectId, ref: "Branch", default: null },
+	currentBmUserId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+	currentConsultantUserId: { type: Schema.Types.ObjectId, ref: "User", default: null },
 	juniorConsultantId: { type: Schema.Types.ObjectId, ref: "User", default: null },
 	juniorReceivedAt: { type: Date, default: null },
 	seniorConsultantId: { type: Schema.Types.ObjectId, ref: "User", default: null },
 	seniorReceivedAt: { type: Date, default: null },
 	createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+	immutableAfterRegistration: { type: Boolean, default: true },
 	duplicates: [{ type: Schema.Types.ObjectId, ref: "Lead" }],
 	remarks: { type: String, default: null },
 }, { timestamps: true });
 
 LeadSchema.index({ email: 1 }, { sparse: true });
 LeadSchema.index({ phone: 1 }, { sparse: true });
+LeadSchema.index({ currentBranchId: 1 });
+LeadSchema.index({ currentConsultantUserId: 1 });
 
 export const Lead: Model<LeadDoc> = models.Lead || model<LeadDoc>("Lead", LeadSchema);
 

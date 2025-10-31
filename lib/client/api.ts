@@ -10,6 +10,16 @@ api.interceptors.request.use((config) => {
 			config.headers = config.headers || {};
 			(config.headers as any)["Authorization"] = `Bearer ${token}`;
 		}
+        // CSRF double-submit header for state-changing requests
+        const method = (config.method || "get").toLowerCase();
+        const needsCsrf = ["post","put","patch","delete"].includes(method);
+        if (needsCsrf && typeof document !== "undefined") {
+            const match = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
+            const csrf = match ? decodeURIComponent(match[1]) : null;
+            if (csrf) {
+                (config.headers as any)["x-csrf-token"] = csrf;
+            }
+        }
 	} catch {}
 	return config;
 });

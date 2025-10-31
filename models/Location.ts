@@ -3,7 +3,7 @@ import { Schema, model, models, type Model, Types } from "mongoose";
 export interface CountryDoc { name: string; code: string; phoneCode: string; status: string; }
 const CountrySchema = new Schema<CountryDoc>({
 	name: { type: String, required: true },
-	code: { type: String, required: true, index: true },
+	code: { type: String, required: true },
 	phoneCode: { type: String, required: true },
 	status: { type: String, default: "active" },
 });

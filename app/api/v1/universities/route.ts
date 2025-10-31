@@ -19,7 +19,7 @@ const createSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-	const gate = requirePermission(req, ["universities:manage"]);
+	const gate = requirePermission(req, ["universities:view","universities:manage"]);
 	if (gate) return gate;
 	await connectToDatabase();
 	const list = await University.find({}).sort({ name: 1 });

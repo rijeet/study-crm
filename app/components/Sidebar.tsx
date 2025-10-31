@@ -18,10 +18,15 @@ const sections = [
 		{ href: "/universities", label: "Universities" },
 		{ href: "/branches", label: "Branches" },
 	] },
+	{ title: "Status", items: [
+		{ href: "/status-groups", label: "Status Groups" },
+		{ href: "/statuses", label: "Statuses" },
+	] },
 	{ title: "CRM", items: [
 		{ href: "/users", label: "Users" },
 		{ href: "/leads", label: "Leads" },
 		{ href: "/leads/import", label: "Upload" },
+		{ href: "/notifications", label: "Notifications" },
 		{ href: "/tasks", label: "Tasks" },
 		{ href: "/accounts", label: "Accounts" },
 		{ href: "/reports", label: "Reports" },
@@ -40,26 +45,47 @@ export default function Sidebar() {
 	};
 
 	return (
-		<aside className="fixed inset-y-0 left-0 w-64 border-r bg-white px-3 py-4 overflow-y-auto">
-			<div className="px-2 pb-4 text-base font-semibold">StudyCRM</div>
-			<nav className="space-y-4 text-sm">
+		<aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col">
+			<div className="px-6 py-5 border-b border-gray-200">
+				<h1 className="text-xl font-bold text-gray-900">StudyCRM</h1>
+				<p className="text-xs text-gray-500 mt-0.5">Study Abroad CRM</p>
+			</div>
+			<nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
 				{sections.map((s) => {
 					const items: { href: string; label: string }[] = s.items ?? [{ href: s.href as string, label: s.title }];
 					return (
-						<div key={s.title}>
-							<div className="px-2 text-gray-500 uppercase tracking-wide text-[11px]">{s.title}</div>
-							<div className="mt-1 flex flex-col">
-								{items.map((l) => (
-									<Link key={l.href} href={l.href} className={`px-2.5 py-1.5 rounded hover:bg-gray-100 ${pathname===l.href?"bg-gray-900 text-white hover:bg-gray-900":""}`}>{l.label}</Link>
-								))}
+						<div key={s.title} className="mb-6">
+							<div className="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">{s.title}</div>
+							<div className="space-y-1">
+								{items.map((l) => {
+									const isActive = pathname === l.href;
+									return (
+										<Link
+											key={l.href}
+											href={l.href}
+											className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+												isActive
+													? "bg-blue-50 text-blue-700 border border-blue-200"
+													: "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+											}`}
+										>
+											{l.label}
+										</Link>
+									);
+								})}
 							</div>
 						</div>
 					);
 				})}
 			</nav>
-			<button onClick={logout} className="mt-6 text-xs px-2.5 py-1.5 border rounded w-full hover:bg-gray-50">Logout</button>
+			<div className="p-4 border-t border-gray-200">
+				<button
+					onClick={logout}
+					className="w-full btn-secondary text-sm py-2"
+				>
+					Logout
+				</button>
+			</div>
 		</aside>
 	);
 }
-
-
